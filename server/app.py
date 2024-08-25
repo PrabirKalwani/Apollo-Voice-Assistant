@@ -150,7 +150,7 @@ def generate_output():
     language , text = transcriber(file_path)
     
     os.remove(file_path)
-    result=ask_question_to_llama(text)
+    result=ask_question_to_Mistral(text)
     question = text 
     output = result 
     # save output in memory 
