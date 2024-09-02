@@ -3,7 +3,9 @@ import 'package:just_audio/just_audio.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+// ignore: depend_on_referenced_packages
 import 'package:http_parser/http_parser.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert'; // For json decoding
 
 class AudioPage extends StatefulWidget {
@@ -50,6 +52,12 @@ class _AudioPageState extends State<AudioPage> {
         );
       },
     );
+  }
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.of(context).pushReplacementNamed(
+        '/login'); // Replace '/login' with your login route
   }
 
   Future<void> _uploadRecording() async {
@@ -128,7 +136,6 @@ class _AudioPageState extends State<AudioPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Apollo Voice Assistant'),
         elevation: 0,
       ),
       body: Padding(
@@ -185,6 +192,15 @@ class _AudioPageState extends State<AudioPage> {
                     const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
               child: const Text('Upload'),
+            ),
+            ElevatedButton(
+              onPressed: _logout,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+              child: const Text('Logout'),
             ),
             Slider(
               value: _currentPosition,

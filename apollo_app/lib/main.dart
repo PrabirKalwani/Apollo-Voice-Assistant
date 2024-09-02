@@ -1,55 +1,33 @@
+import 'package:apollo_app/firebase_options.dart';
+import 'package:apollo_app/project/routes/app_route_config.dart';
+import 'package:apollo_app/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:apollo_app/pages/UserLogic/audio.dart';
-import 'package:apollo_app/pages/UserLogic/chat.dart';
-import 'package:apollo_app/pages/UserLogic/profile.dart';
+import 'package:apollo_app/Screens/UserLogic/audio.dart';
+import 'package:apollo_app/Screens/UserLogic/chat.dart';
+import 'package:apollo_app/Screens/UserLogic/profile.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
-  runApp(MyApp());
+void main() async {
+  await dotenv.load(fileName: ".env");
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  runApp(Myapp());
 }
 
-class MyApp extends StatefulWidget {
-  @override
-  _MyAppState createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  int _currentIndex = 0;
-  final List<Widget> _pages = [
-    AudioPage(),
-    Chat(),
-    Profile(),
-  ];
+class Myapp extends StatelessWidget {
+  const Myapp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Apollo Voice Assistant',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Apollo Voice Assistant'),
-          elevation: 0,
-        ),
-        body: Center(
-          child: _pages[_currentIndex],
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
-          currentIndex: _currentIndex,
-          items: const [
-            BottomNavigationBarItem(
-                icon: Icon(Icons.voice_chat), label: "Voice"),
-            BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-          ],
-        ),
-      ),
+    return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      routeInformationParser: MyAppRouter().router.routeInformationParser,
+      routerDelegate: MyAppRouter().router.routerDelegate,
+      theme: lightMode,
+      darkTheme: darkMode,
     );
   }
 }
