@@ -3,8 +3,13 @@ import os
 import whisper
 from llama_cpp import Llama
 from transformers import GPT2Tokenizer
-from email_utils import send_email
-import re
+from dotenv import load_dotenv
+
+# Import email-related utilities from email_utils
+from email_utils import send_email, extract_email_details
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -14,7 +19,7 @@ whisper_model = whisper.load_model("base")
 # LLM (Phi 3 Mini 4K Instruction) initialization
 llm_model = Llama(
     model_path="./model/Phi 3 Mini 4K Instruction.gguf",
-    n_ctx=4096, 
+    n_ctx=4096,
     verbose=False,
     n_gpu_layers=-1
 )
@@ -50,7 +55,7 @@ def manage_memory():
 # Helper function to interact with the LLM model (Phi)
 def ask_question_to_model(question):
     context = get_conversation()
-    
+
     # Input format for the LLM
     input_text = f'''
     <s> 
@@ -62,15 +67,15 @@ def ask_question_to_model(question):
     <</USER>>
     [INST]
     '''
-    
+
     output = llm_model(
         input_text,
-        max_tokens=128, 
+        max_tokens=512,
         temperature=0.3,
-        stop=["</s>", "[INST]"],  
+        stop=["</s>", "[INST]"],
         echo=False,
     )
-    
+
     generated_text = output['choices'][0]['text']
     clean_output = clean_generated_text(generated_text)
     return clean_output
@@ -79,65 +84,26 @@ def ask_question_to_model(question):
 def clean_generated_text(generated_text):
     return generated_text.replace("[INST]", "").strip()
 
-
-
 # Whisper transcriber (speech-to-text)
 def transcribe_audio(file_path):
     audio = whisper.load_audio(file_path)
     audio = whisper.pad_or_trim(audio)
-    
+
     mel = whisper.log_mel_spectrogram(audio).to(whisper_model.device)
     _, probs = whisper_model.detect_language(mel)
     language = max(probs, key=probs.get)
 
     options = whisper.DecodingOptions()
     result = whisper.decode(whisper_model, mel, options)
-    
+
     return language, result.text
-
-
-# Email validation function
-def is_valid_email(email):
-    # Simple regex for basic email validation
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return re.match(pattern, email) is not None
-
-# Extract email details from transcription
-def extract_email_details(transcription):
-    sender_email = "shahaayush866@gmail.com"
-    receiver_email = "prabir.kalwani@gmail.com"
-    subject = None
-    body = None
-
-    # Extract sender email
-    sender_match = re.search(r'from\s+([\w\.-]+@[\w\.-]+)', transcription)
-    if sender_match:
-        sender_email = sender_match.group(1) if is_valid_email(sender_match.group(1)) else send_email
-
-    # Extract receiver email
-    receiver_match = re.search(r'to\s+([\w\.-]+@[\w\.-]+)', transcription)
-    if receiver_match:
-        receiver_email = receiver_match.group(1) if is_valid_email(receiver_match.group(1)) else None
-
-    # Extract subject
-    subject_match = re.search(r'subject\s+(.+)', transcription, re.IGNORECASE)
-    if subject_match:
-        subject = subject_match.group(1).strip()
-
-    # Extract body (anything after the subject)
-    body_match = re.search(r'body\s+(.+)', transcription, re.IGNORECASE)
-    if body_match:
-        body = body_match.group(1).strip()
-
-    return sender_email, receiver_email, subject, body
-
 
 # API route to transcribe audio
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
-    
+
     file = request.files['file']
     file_path = "temp_audio.mp3"
     file.save(file_path)
@@ -145,7 +111,7 @@ def transcribe():
     # Transcribe the audio
     language, text = transcribe_audio(file_path)
     os.remove(file_path)
-    
+
     return jsonify({'language': language, 'transcription': text})
 
 # API route to transcribe and generate AI output
@@ -153,7 +119,7 @@ def transcribe():
 def generate_output():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
-    
+
     file = request.files['file']
     file_path = "temp_audio.mp3"
     file.save(file_path)
@@ -162,7 +128,7 @@ def generate_output():
     language, question_text = transcribe_audio(file_path)
     os.remove(file_path)
 
-# Check if email should be sent
+    # Check if email should be sent
     if "send an email" in question_text.lower():
         # Extract email details
         sender_email, receiver_email, subject, body = extract_email_details(question_text)
@@ -170,56 +136,17 @@ def generate_output():
         # Check if emails are valid
         if not sender_email or not receiver_email:
             return jsonify({'error': 'Invalid sender or receiver email.'}), 400
-        
-        # Generate response from the LLM (Phi)
-        result = ask_question_to_model(question_text)
-
-        # Compose the email body
-        body = f"Transcription: {question_text}\n\nModel Response: {result}"
 
         password = os.getenv("EMAIL_PASSWORD")  # Use environment variables for security
 
-        # Send email
-        try:
-            send_email(sender_email, receiver_email, subject or "AI Transcription and Response", body, password)
-            return jsonify({
-                'message': 'Email sent successfully!',
-                'question': question_text,
-                'result': result,
-                'conversation': memory["history"]
-            })
-        except Exception as e:
-            return jsonify({'error': f"Failed to send email: {e}"})
+        # Directly send email if the subject and body are provided
+        return send_email_response(sender_email, receiver_email, subject, body, question_text, password)
     
-
-    # Generate response from the LLM (Phi)
+    
     result = ask_question_to_model(question_text)
 
     # Save conversation to memory
     save_context(question_text, result)
-
-
-    # # Check if the transcription contains the phrase "Send an email"
-    # if "send an email" in question_text.lower():
-    #     # Email details
-    #     sender_email = "shahaayush866@gmail.com"  # Replace with your sender email
-    #     receiver_email = "prabir.kalwani@gmail.com"  # Replace with receiver email
-    #     subject = "AI Transcription and Response"
-    #     body = f"Transcription: {question_text}\n\nModel Response: {result}"
-    #     password = os.getenv("EMAIL_PASSWORD")  # Use environment variables for security
-
-    #     # Send email
-    #     try:
-    #         send_email(sender_email, receiver_email, subject, body, password)
-    #         return jsonify({
-    #             'message': 'Email sent successfully!',
-    #             'question': question_text,
-    #             'result': result,
-    #             'conversation': memory["history"]
-    #         })
-    #     except Exception as e:
-    #         return jsonify({'error': f"Failed to send email: {e}"})
-    
 
     # Return the result along with conversation history
     return jsonify({
@@ -227,6 +154,32 @@ def generate_output():
         'result': result,
         'conversation': memory["history"]
     })
+
+def send_email_response(sender_email, receiver_email, subject, body, question_text, password):
+    """Handles sending the email and returns the appropriate response."""
+    
+    # Use the provided body and subject directly if present
+    if body and subject:  
+        email_body = body
+        email_subject = subject
+        result = None  # No need to generate model response when subject and body are provided
+    else:
+        # If no subject or body is provided, fall back to generating a response from the LLM (Phi)
+        result = ask_question_to_model(question_text)
+        email_body = f"Transcription: {question_text}\n\nModel Response: {result}"
+        email_subject = "AI Transcription and Response"
+
+    try:
+        # Send the email using the provided subject and body (or generated content if applicable)
+        send_email(sender_email, receiver_email, email_subject, email_body, password)
+        return jsonify({
+            'message': 'Email sent successfully!',
+            'question': question_text,
+            'result': result,
+            'conversation': memory["history"]
+        })
+    except Exception as e:
+        return jsonify({'error': f"Failed to send email: {e}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
