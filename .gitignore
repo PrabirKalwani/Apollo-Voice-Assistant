@@ -1,2 +1,4 @@
 .venv
 /server/model
+.env
+__pycache__
