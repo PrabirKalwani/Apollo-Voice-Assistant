@@ -8,10 +8,7 @@ import re
 
 def send_email(sender_email, receiver_email, subject, body, password):
     """Sends an email using the provided details."""
-    # Create a secure SSL context
     context = ssl.create_default_context()
-
-    # Create the email
     message = MIMEMultipart()
     message["From"] = sender_email
     message["To"] = receiver_email
