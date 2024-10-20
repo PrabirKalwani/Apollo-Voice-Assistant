@@ -101,20 +101,19 @@ def revoke_token(creds):
     return True
 
 
-def logout():
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-        if revoke_token(creds):
-            os.remove('token.json')
-            print("Token file deleted.")
-            return True
-    print("No token file found or failed to revoke.")
-    return False
+def logout_oauth():
+    if os.path.exists('./token.json'):
+        os.remove('./token.json')
+        print("Token file deleted.")
+        return True
+    else:
+        print("Token Not Deleted")
+        return False
 
 
 @app.route('/logout-of-oauth', methods=['POST'])
 def logout_of_oauth():
-    if logout():
+    if logout_oauth():
         return jsonify({'status': 'success', 'message': 'Logged out successfully.'}), 200
     return jsonify({'status': 'error', 'message': 'Logout failed.'}), 400
 
