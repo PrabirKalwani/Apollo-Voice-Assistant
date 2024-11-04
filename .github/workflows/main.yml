@@ -1,0 +1,39 @@
+name: Docker Flask Image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Create the credentials.json file from the secret
+    - name: Create credentials.json
+      run: echo "${{ secrets.CREDENTIALS }}" > credentials.json
+    
+    # Create the firebase_service.json file from the secret
+    - name: Create firebase_service.json
+      run: echo "${{ secrets.FIREBASESERVICE }}" > firebase_service.json
+    
+    # Build the Docker image with the new repository name
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile \
+        --tag prabirkalwani/flask-app-apollo:$(date +%0Y-%0m-%0d-%0H-%0M-%0S) \
+        --tag prabirkalwani/flask-app-apollo:latest
+    
+    # DockerHub Login
+    - name: DockerHub Login
+      run: docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password ${{ secrets.DOCKER_HUB_TOKEN }}
+    
+    # Push to DockerHub
+    - name: Push to DockerHub
+      run: docker push --all-tags prabirkalwani/flask-app-apollo
+
+    # Clean up credentials.json and firebase_service.json after the build
+    - name: Clean up
+      run: rm credentials.json firebase_service.json
