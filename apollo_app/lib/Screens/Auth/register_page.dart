@@ -1,9 +1,10 @@
 import "package:apollo_app/Components/button.dart";
-import "package:apollo_app/Components/squaretile.dart";
 import "package:apollo_app/Components/textfield.dart";
-import "package:apollo_app/services/auth_service.dart";
-import "package:firebase_auth/firebase_auth.dart";
-import "package:flutter/material.dart";
+import 'package:apollo_app/Screens/UserLogic/Home.dart';
+import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:fluttertoast/fluttertoast.dart';
 
 class RegisterPage extends StatefulWidget {
   final Function? onTap;
@@ -15,42 +16,86 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final emailController = TextEditingController();
-
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
-  void showErrorMessage(String message) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: Colors.deepPurple,
-            title: Center(
-              child: Text(
-                message,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          );
-        });
+  void showToast(String message, Color color) {
+    Fluttertoast.showToast(
+      msg: message,
+      backgroundColor: color,
+      textColor: Colors.white,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+    );
   }
 
-  void signUserUp() async {
+  Future<void> signUserUp() async {
+    if (passwordController.text != confirmPasswordController.text) {
+      showToast("Passwords don't match", Colors.red);
+      return;
+    }
+
+    // Show loading dialog
     showDialog(
-        context: context,
-        builder: (context) {
-          return const Center();
-        });
+      context: context,
+      barrierDismissible: false, // Prevent dismissing the dialog manually
+      builder: (context) {
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
     try {
-      if (passwordController.text == confirmPasswordController.text) {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
-            email: emailController.text, password: passwordController.text);
-      } else {
-        Navigator.pop(context);
-        showErrorMessage("Passwords Don't Match");
+      var response = await http.post(
+        Uri.parse('http://127.0.0.1:5000/register'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          'email': emailController.text,
+          'password': passwordController.text,
+        }),
+      );
+
+      // Close the loading dialog before further processing
+      if (mounted) {
+        Navigator.pop(context); // Close the loading dialog
       }
-    } on FirebaseAuthException catch (e) {
-      showErrorMessage(e.code);
+
+      // Treat 200 and 201 as successful registration
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        var jsonResponse = jsonDecode(response.body);
+
+        // Verify the success field in the response
+        if (jsonResponse['success'] == true) {
+          showToast("Registration successful!", Colors.green);
+
+          // Delay navigation to allow the lifecycle to complete
+          await Future.delayed(Duration(seconds: 1)); // Optional delay
+
+          // Check if the widget is still mounted before navigating
+          if (mounted) {
+            // Use a post frame callback to navigate after the current frame
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                // Redirect to the HomePage after successful registration
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => HomePage()),
+                  (Route<dynamic> route) => true, // Removes all previous routes
+                );
+              }
+            });
+          }
+        } else {
+          showToast("Registration failed. Please try again.", Colors.red);
+        }
+      } else {
+        // Handle non-success status codes
+        showToast(
+            "Error: ${response.statusCode} - ${response.body}", Colors.red);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close the loading dialog
+      }
+      showToast("An error occurred: ${e.toString()}", Colors.red);
     }
   }
 
@@ -87,7 +132,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 MyTextField(
                   controller: emailController,
-                  hintText: "Username",
+                  hintText: "Email",
                   obscureText: false,
                 ),
                 const SizedBox(
@@ -114,41 +159,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   text: 'Sign Up',
                 ),
                 const SizedBox(height: 50),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        thickness: 0.6,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Text('or Continue With',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary)),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        thickness: 0.6,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    )
-                  ],
-                ),
-                const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Squaretile(
-                        imagePath: "lib/assets/images/google.png",
-                        onTap: () => AuthService().signInWithGoogle()),
-                    // const SizedBox(width: 10),
-                    // Squaretile(
-                    //     imagePath: "lib/assets/images/Apple_logo_white.png", onTap: () {})
-                  ],
-                ),
-                const SizedBox(height: 25),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

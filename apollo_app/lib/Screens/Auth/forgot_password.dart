@@ -3,8 +3,9 @@
 import 'package:apollo_app/Components/button.dart';
 import 'package:apollo_app/Components/textfield.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http; // Import http package
+import 'package:fluttertoast/fluttertoast.dart'; // Import FlutterToast
+import 'dart:convert'; // Import for jsonEncode
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -15,24 +16,63 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  void _resetPassword() async {
-    try {
-      String email = _emailController.text;
-      await _auth.sendPasswordResetEmail(email: email);
-      // Password reset email sent successfully.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Password reset email sent to $email'),
-        ),
+  Future<void> _resetPassword() async {
+    String email = _emailController.text;
+
+    // Make sure the email is not empty
+    if (email.isEmpty) {
+      Fluttertoast.showToast(
+        msg: 'Please enter your email',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
       );
+      return;
+    }
+
+    final Uri uri = Uri.parse(
+        'http://127.0.0.1:5000/reset-password'); // Update with your backend URL
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+        }),
+      );
+
+      // Check the status code and response
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          Fluttertoast.showToast(
+            msg: responseData['message'], // Display success message
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+          );
+        } else {
+          Fluttertoast.showToast(
+            msg: 'Failed to send reset email', // Display failure message
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+          );
+        }
+      } else {
+        Fluttertoast.showToast(
+          msg: 'Failed to send reset email', // Display failure message
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
+      }
     } catch (e) {
-      // Handle any errors that occurred during the password reset process.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Password reset failed: $e'),
-        ),
+      // Handle any errors that occurred during the network request
+      Fluttertoast.showToast(
+        msg: 'Error: $e', // Display error message
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
       );
     }
   }
@@ -47,7 +87,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Expanded(
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 70, top: 10),
+                  padding: EdgeInsets.only(right: 70, top: 10),
                 ),
               ),
             ),
@@ -81,53 +121,43 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 fontSize: 16,
               ),
             ),
-            SizedBox(height: 50),
+            const SizedBox(height: 50),
             MyTextField(
               controller: _emailController,
               hintText: "Your Registered Email",
               obscureText: false,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             MyButton(
               text: 'Reset',
               onTap: _resetPassword,
             ),
             const SizedBox(height: 40),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(
-                "Facing Issues?",
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 4),
-              GestureDetector(
-                onLongPress: () async {
-                  final emailLaunchUri = Uri(
-                    scheme: 'mailto',
-                    path: 'prabir.kalwani@gmail.com',
-                    queryParameters: {
-                      'subject': 'Issue with login',
-                    },
-                  );
-                  final String emailLaunchUriString = emailLaunchUri.toString();
-
-                  if (await canLaunch(emailLaunchUriString)) {
-                    await launch(emailLaunchUriString);
-                  } else {
-                    throw 'Could not launch email app for prabir.kalwani@gmail.com';
-                  }
-                },
-                child: const Text(
-                  "Support",
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Facing Issues?",
                   style: TextStyle(
-                    color: Colors.blue,
+                    color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ])
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onLongPress: () {
+                    // You can add your own functionality here or remove the gesture detector
+                  },
+                  child: const Text(
+                    "Support",
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            )
           ],
         ),
       ),

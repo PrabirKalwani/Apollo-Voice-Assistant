@@ -1,12 +1,12 @@
+import 'package:apollo_app/Screens/Auth/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
-// ignore: depend_on_referenced_packages
+import 'package:http/http.dart' as http; // Import http package
 import 'package:http_parser/http_parser.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:convert'; // For json decoding
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
 
 class AudioPage extends StatefulWidget {
   @override
@@ -55,9 +55,20 @@ class _AudioPageState extends State<AudioPage> {
   }
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.of(context).pushReplacementNamed(
-        '/login'); // Replace '/login' with your login route
+    // Clear Shared Preferences
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    // Navigate to the login page
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => LoginPage(
+          onTap: () {
+            // Define what happens when onTap is called, or leave it empty
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _uploadRecording() async {
@@ -193,6 +204,7 @@ class _AudioPageState extends State<AudioPage> {
               ),
               child: const Text('Upload'),
             ),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _logout,
               style: ElevatedButton.styleFrom(
