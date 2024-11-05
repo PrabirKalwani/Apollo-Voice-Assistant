@@ -126,12 +126,16 @@ class _AudioPageState extends State<AudioPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Audio Chat'),
+        title: Text('Audio Chat',
+            style: TextStyle(color: theme.colorScheme.onPrimary)),
+        backgroundColor: theme.colorScheme.primary,
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: Icon(Icons.logout, color: theme.colorScheme.onPrimary),
             onPressed: _logout,
           ),
         ],
@@ -153,13 +157,14 @@ class _AudioPageState extends State<AudioPage> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(width: 8),
-                  Text('Generating response...'),
+                  Text('Generating response...',
+                      style: TextStyle(color: theme.colorScheme.onBackground)),
                 ],
               ),
             ),
-          Divider(height: 1.0),
+          Divider(height: 1.0, color: theme.dividerColor),
           Container(
-            decoration: BoxDecoration(color: Theme.of(context).cardColor),
+            decoration: BoxDecoration(color: theme.cardColor),
             child: _buildAudioControls(),
           ),
         ],
@@ -168,6 +173,8 @@ class _AudioPageState extends State<AudioPage> {
   }
 
   Widget _buildAudioControls() {
+    final theme = Theme.of(context);
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8.0),
       child: Row(
@@ -175,13 +182,17 @@ class _AudioPageState extends State<AudioPage> {
           Expanded(
             child: Text(
               _isRecording ? 'Recording...' : 'Tap microphone to start',
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(
+                  fontSize: 16, color: theme.colorScheme.onBackground),
             ),
           ),
           IconButton(
-            icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+            icon: Icon(_isRecording ? Icons.stop : Icons.mic,
+                color: _isRecording
+                    ? Colors.red
+                    : theme.colorScheme
+                        .primary), // Use theme primary color for mic icon
             onPressed: _isRecording ? _stopRecording : _startRecording,
-            color: _isRecording ? Colors.red : Theme.of(context).primaryColor,
           ),
         ],
       ),
@@ -197,6 +208,8 @@ class ChatMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
@@ -206,7 +219,10 @@ class ChatMessage extends StatelessWidget {
               ? Expanded(child: SizedBox())
               : Container(
                   margin: const EdgeInsets.only(right: 16.0),
-                  child: CircleAvatar(child: Text('Bot')),
+                  child: CircleAvatar(
+                      child: Text('Bot',
+                          style:
+                              TextStyle(color: theme.colorScheme.onSurface))),
                 ),
           Expanded(
             child: Column(
@@ -214,15 +230,21 @@ class ChatMessage extends StatelessWidget {
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Text(isUser ? 'You' : 'Bot',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onBackground)),
                 Container(
                   margin: EdgeInsets.only(top: 5.0),
                   child: isUser
-                      ? Text(text)
+                      ? Text(text,
+                          style:
+                              TextStyle(color: theme.colorScheme.onBackground))
                       : MarkdownBody(
                           data: text,
                           styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(fontSize: 16),
+                            p: TextStyle(
+                                fontSize: 16,
+                                color: theme.colorScheme.onBackground),
                             strong: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -233,7 +255,10 @@ class ChatMessage extends StatelessWidget {
           isUser
               ? Container(
                   margin: const EdgeInsets.only(left: 16.0),
-                  child: CircleAvatar(child: Text('You')),
+                  child: CircleAvatar(
+                      child: Text('You',
+                          style:
+                              TextStyle(color: theme.colorScheme.onSurface))),
                 )
               : Expanded(child: SizedBox()),
         ],

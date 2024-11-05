@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:apollo_app/Components/button.dart';
 import 'package:apollo_app/Components/textfield.dart';
 import 'package:apollo_app/Screens/Auth/forgot_password.dart';
+import 'package:fluttertoast/fluttertoast.dart'; // Importing the fluttertoast package
 
 class LoginPage extends StatefulWidget {
   final Function? onTap;
@@ -19,45 +20,23 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  bool _isNavigating = false; // Flag to prevent re-entrant navigation
 
   @override
   void initState() {
     super.initState();
-    // Clear the text fields when the login page is initialized
     emailController.clear();
     passwordController.clear();
   }
 
-  void showErrorMessage(String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Theme.of(context).colorScheme.background,
-          title: Center(
-            child: Text(
-              message,
-              style: TextStyle(color: Theme.of(context).colorScheme.primary),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> signUserIn() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
+    if (_isNavigating) return; // Prevent further navigation while navigating
+    _isNavigating = true; // Set the flag to true
 
     try {
       print('Sending login request...'); // Debug log
       var response = await http.post(
-        Uri.parse('http://127.0.0.1:5000/login'),
+        Uri.parse('http://localhost:8080/api/login'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'email': emailController.text,
@@ -65,61 +44,87 @@ class _LoginPageState extends State<LoginPage> {
         }),
       );
 
-      if (mounted) {
-        Navigator.pop(context); // Close the loading dialog
-      }
-
       print('Response status: ${response.statusCode}'); // Debug log
       print('Response body: ${response.body}'); // Debug log
 
       if (response.statusCode == 200) {
-        // Parse the response
         var data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          String token = data['token'];
-          print('Login successful, token received: $token'); // Debug log
+        if (data != null && data['message'] == "User logged in successfully") {
+          if (data['userCredential'] != null &&
+              data['userCredential']['user'] != null &&
+              data['userCredential']['user']['stsTokenManager'] != null) {
+            String accessToken = data['userCredential']['user']
+                ['stsTokenManager']['accessToken'];
+            String refreshToken = data['userCredential']['user']
+                ['stsTokenManager']['refreshToken'];
+            String uid = data['userCredential']['user']['uid'];
+            String email = data['userCredential']['user']['email'];
 
-          // Store the token in shared preferences
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', token);
-          await prefs.setInt('token_expiry',
-              DateTime.now().add(Duration(hours: 1)).millisecondsSinceEpoch);
+            print(
+                'Login successful, token received: $accessToken'); // Debug log
 
-          print('Token stored in shared preferences.'); // Debug log
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+                'auth_token', accessToken); // Store access token
+            await prefs.setString('refresh_token', refreshToken);
+            await prefs.setString('uid', uid);
+            await prefs.setString('email', email);
 
-          // Delay navigation to allow any transitions to complete
-          await Future.delayed(Duration(seconds: 1));
+            print(
+                'Tokens and user info stored in shared preferences.'); // Debug log
 
-          if (mounted) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushAndRemoveUntil(
-                context,
+            // Show success toast
+            Fluttertoast.showToast(
+              msg: "Login successful!",
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.BOTTOM,
+            );
+
+            // Use a delay before navigation
+            if (mounted) {
+              await Future.delayed(Duration(milliseconds: 1000));
+              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (context) => HomePage()),
-                (Route<dynamic> route) => true, // Clear the stack
+                (route) => true,
               );
-            });
+            }
+          } else {
+            Fluttertoast.showToast(
+              msg: "Login failed: Invalid response structure.",
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.BOTTOM,
+            );
           }
         } else {
-          showErrorMessage("Login failed: ${response.body}");
+          Fluttertoast.showToast(
+            msg: "Login failed: ${data['message']}",
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+          );
         }
       } else {
-        showErrorMessage("Login failed: ${response.body}");
+        Fluttertoast.showToast(
+          msg: "Login failed: ${response.body}",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
       }
     } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-      }
       print('Error occurred: $e'); // Debug log
-      showErrorMessage("An error occurred: $e");
+      Fluttertoast.showToast(
+        msg: "An error occurred: $e",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
+    } finally {
+      _isNavigating = false; // Reset the flag regardless of the outcome
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context)
-          .colorScheme
-          .background, // Use background color from the theme
+      backgroundColor: Theme.of(context).colorScheme.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -134,11 +139,9 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 25),
                 Text(
-                  "Welcome to Appollo!",
+                  "Welcome to Apollo!",
                   style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary, // Use primary color from the theme
+                    color: Theme.of(context).colorScheme.primary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -172,9 +175,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: Text(
                           "Forgot Password?",
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary, // Use primary color for the button
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       ),
@@ -187,16 +188,13 @@ class _LoginPageState extends State<LoginPage> {
                   onTap: signUserIn,
                 ),
                 const SizedBox(height: 50),
-                const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       "Not a member?",
                       style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary, // Use primary color for text
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -206,8 +204,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: const Text(
                         "Register Now",
                         style: TextStyle(
-                          color: Colors
-                              .blue, // Change to a color from your theme if needed
+                          color: Colors.blue,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

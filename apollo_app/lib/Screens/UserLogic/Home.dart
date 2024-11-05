@@ -20,13 +20,15 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Apollo Voice Assistant',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
       home: Scaffold(
+        backgroundColor:
+            theme.colorScheme.background, // Use the theme background color
         body: Center(
           child: _pages[_currentIndex],
         ),
@@ -37,11 +39,31 @@ class _HomePageState extends State<HomePage> {
             });
           },
           currentIndex: _currentIndex,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-                icon: Icon(Icons.voice_chat), label: "Voice"),
-            BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Chat"),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+              icon: Icon(Icons.voice_chat,
+                  color: isDarkMode
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme
+                          .secondary), // Use primary or secondary color based on theme
+              label: "Voice",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat,
+                  color: isDarkMode
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme
+                          .secondary), // Use primary or secondary color based on theme
+              label: "Chat",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person,
+                  color: isDarkMode
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme
+                          .secondary), // Use primary or secondary color based on theme
+              label: "Profile",
+            ),
           ],
         ),
       ),
