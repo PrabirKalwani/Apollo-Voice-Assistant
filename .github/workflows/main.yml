@@ -1,39 +1,40 @@
-name: Docker Flask Image
+name: Docker-Deploy
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    
-    # Create the credentials.json file from the secret
-    - name: Create credentials.json
-      run: echo "${{ secrets.CREDENTIALS }}" > credentials.json
-    
-    # Create the firebase_service.json file from the secret
-    - name: Create firebase_service.json
-      run: echo "${{ secrets.FIREBASESERVICE }}" > firebase_service.json
-    
-    # Build the Docker image with the new repository name
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile \
-        --tag prabirkalwani/flask-app-apollo:$(date +%0Y-%0m-%0d-%0H-%0M-%0S) \
-        --tag prabirkalwani/flask-app-apollo:latest
-    
-    # DockerHub Login
-    - name: DockerHub Login
-      run: docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password ${{ secrets.DOCKER_HUB_TOKEN }}
-    
-    # Push to DockerHub
-    - name: Push to DockerHub
-      run: docker push --all-tags prabirkalwani/flask-app-apollo
+      - name: Checkout Source
+        uses: actions/checkout@v4
 
-    # Clean up credentials.json and firebase_service.json after the build
-    - name: Clean up
-      run: rm credentials.json firebase_service.json
+      - name: Set up secrets as files
+        run: |
+          echo "${{ secrets.CREDENTIALS }}" > credentials.json
+          echo "${{ secrets.FIREBASESERVICE }}" > firebaseservice.json
+
+      - name: Build docker image
+        run: docker build -t prabirkalwani/apollo .
+
+      - name: Login to Docker Hub
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_ACCESS_TOKEN }}
+
+      - name: Publish image to Docker Hub
+        run: docker push prabirkalwani/apollo:latest
+
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Pull image from Docker Hub
+        run: sudo docker pull prabirkalwani/apollo:latest
+
+      - name: Delete old container
+        run: sudo docker rm -f apollo
+
+      - name: Run Docker container
+        run: sudo docker run -d -p 3000:3000 --name apollo prabirkalwani/apollo:latest

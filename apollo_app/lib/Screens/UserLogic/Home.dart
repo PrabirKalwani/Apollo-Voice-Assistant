@@ -27,10 +27,6 @@ class _HomePageState extends State<HomePage> {
         primarySwatch: Colors.blue,
       ),
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Apollo Voice Assistant'),
-          elevation: 0,
-        ),
         body: Center(
           child: _pages[_currentIndex],
         ),

@@ -1,12 +1,13 @@
-import 'package:apollo_app/Screens/Auth/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http; // Import http package
+import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'dart:convert'; // For json decoding
-import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:apollo_app/Screens/Auth/login_page.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class AudioPage extends StatefulWidget {
   @override
@@ -17,87 +18,17 @@ class _AudioPageState extends State<AudioPage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final AudioRecorder _recorder = AudioRecorder();
   bool _isRecording = false;
+  bool _isGenerating = false;
   String? _filePath;
-  double _currentPosition = 0;
-  double _totalDuration = 0;
+  List<ChatMessage> _messages = [];
+  ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     _audioPlayer.dispose();
     _recorder.dispose();
+    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _showResult(String result) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Server Response'),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text(result),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _logout() async {
-    // Clear Shared Preferences
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-
-    // Navigate to the login page
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => LoginPage(
-          onTap: () {
-            // Define what happens when onTap is called, or leave it empty
-          },
-        ),
-      ),
-    );
-  }
-
-  Future<void> _uploadRecording() async {
-    if (_filePath == null) return;
-
-    final uri = Uri.parse('http://127.0.0.1:5000/generate_output');
-    final request = http.MultipartRequest('POST', uri)
-      ..files.add(await http.MultipartFile.fromPath(
-        'file',
-        _filePath!,
-        contentType: MediaType('audio', 'm4a'), // Adjust if needed
-      ));
-
-    try {
-      final response = await request.send();
-
-      // Handle response
-      if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
-        final responseJson = jsonDecode(responseBody);
-
-        final result = responseJson['result'] as String;
-        _showResult(result);
-      } else {
-        print('Upload failed with status code: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Upload error: $e');
-    }
   }
 
   Future<void> _startRecording() async {
@@ -126,106 +57,186 @@ class _AudioPageState extends State<AudioPage> {
     final path = await _recorder.stop();
     setState(() {
       _isRecording = false;
+      _isGenerating = true;
+      _messages.add(ChatMessage(text: "Your audio message", isUser: true));
     });
+    await _uploadRecording();
   }
 
-  Future<void> _playRecording() async {
-    if (_filePath != null) {
-      await _audioPlayer.setFilePath(_filePath!);
-      _totalDuration = _audioPlayer.duration?.inSeconds.toDouble() ?? 0;
-      _audioPlayer.play();
+  Future<void> _uploadRecording() async {
+    if (_filePath == null) return;
 
-      _audioPlayer.positionStream.listen((position) {
+    final uri = Uri.parse('http://127.0.0.1:5000/generate_output');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(await http.MultipartFile.fromPath(
+        'file',
+        _filePath!,
+        contentType: MediaType('audio', 'm4a'),
+      ));
+
+    try {
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        final responseBody = await response.stream.bytesToString();
+        final responseJson = jsonDecode(responseBody);
+
+        final result = responseJson['result'] as String;
         setState(() {
-          _currentPosition = position.inSeconds.toDouble();
+          _isGenerating = false;
+          _messages.add(ChatMessage(text: result, isUser: false));
         });
+        _scrollToBottom();
+      } else {
+        print('Upload failed with status code: ${response.statusCode}');
+        setState(() {
+          _isGenerating = false;
+        });
+      }
+    } catch (e) {
+      print('Upload error: $e');
+      setState(() {
+        _isGenerating = false;
       });
     }
+  }
+
+  void _scrollToBottom() {
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => LoginPage(
+          onTap: () {
+            // Define what happens when onTap is called, or leave it empty
+          },
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        elevation: 0,
+        title: Text('Audio Chat'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            onPressed: _logout,
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              _isRecording ? Icons.mic : Icons.mic_none,
-              size: 100,
-              color: _isRecording ? Colors.red : Colors.blue,
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: EdgeInsets.all(8.0),
+              itemBuilder: (_, int index) => _messages[index],
+              itemCount: _messages.length,
             ),
-            const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: _isRecording ? null : _startRecording,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                  ),
-                  child: const Text('Record'),
+          ),
+          if (_isGenerating)
+            Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 8),
+                  Text('Generating response...'),
+                ],
+              ),
+            ),
+          Divider(height: 1.0),
+          Container(
+            decoration: BoxDecoration(color: Theme.of(context).cardColor),
+            child: _buildAudioControls(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioControls() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _isRecording ? 'Recording...' : 'Tap microphone to start',
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+          IconButton(
+            icon: Icon(_isRecording ? Icons.stop : Icons.mic),
+            onPressed: _isRecording ? _stopRecording : _startRecording,
+            color: _isRecording ? Colors.red : Theme.of(context).primaryColor,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ChatMessage extends StatelessWidget {
+  ChatMessage({required this.text, required this.isUser});
+
+  final String text;
+  final bool isUser;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          isUser
+              ? Expanded(child: SizedBox())
+              : Container(
+                  margin: const EdgeInsets.only(right: 16.0),
+                  child: CircleAvatar(child: Text('Bot')),
                 ),
-                const SizedBox(width: 20),
-                ElevatedButton(
-                  onPressed: _isRecording ? _stopRecording : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 15),
-                  ),
-                  child: const Text('Stop'),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Text(isUser ? 'You' : 'Bot',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Container(
+                  margin: EdgeInsets.only(top: 5.0),
+                  child: isUser
+                      ? Text(text)
+                      : MarkdownBody(
+                          data: text,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(fontSize: 16),
+                            strong: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: !_isRecording ? _playRecording : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              ),
-              child: const Text('Play'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _filePath != null ? _uploadRecording : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              ),
-              child: const Text('Upload'),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _logout,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              ),
-              child: const Text('Logout'),
-            ),
-            Slider(
-              value: _currentPosition,
-              max: _totalDuration,
-              onChanged: (value) {
-                setState(() {
-                  _currentPosition = value;
-                });
-                _audioPlayer.seek(Duration(seconds: value.toInt()));
-              },
-            ),
-          ],
-        ),
+          ),
+          isUser
+              ? Container(
+                  margin: const EdgeInsets.only(left: 16.0),
+                  child: CircleAvatar(child: Text('You')),
+                )
+              : Expanded(child: SizedBox()),
+        ],
       ),
     );
   }

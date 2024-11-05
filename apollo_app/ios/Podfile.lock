@@ -86,7 +86,6 @@ PODS:
   - RecaptchaInterop (100.0.0)
   - record_darwin (1.0.0):
     - Flutter
-    - FlutterMacOS
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -168,7 +167,7 @@ SPEC CHECKSUMS:
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
-  record_darwin: df0a677188e5fed18472550298e675f19ddaffbe
+  record_darwin: 3b1a8e7d5c0cbf45ad6165b4d83a6ca643d929c3
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   Toast: 1f5ea13423a1e6674c4abdac5be53587ae481c4e
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
