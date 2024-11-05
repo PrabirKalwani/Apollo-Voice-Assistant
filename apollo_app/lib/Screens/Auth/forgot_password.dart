@@ -31,7 +31,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     final Uri uri = Uri.parse(
-        'http://localhost:8080/api/reset-password'); // Updated with your backend URL
+        'http://13.61.37.132:6969/api/reset-password'); // Updated with your backend URL
 
     try {
       final response = await http.post(

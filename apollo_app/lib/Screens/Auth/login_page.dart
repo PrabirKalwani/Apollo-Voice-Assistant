@@ -36,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       print('Sending login request...'); // Debug log
       var response = await http.post(
-        Uri.parse('http://localhost:8080/api/login'),
+        Uri.parse('http://13.61.37.132:6969/api/login'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'email': emailController.text,

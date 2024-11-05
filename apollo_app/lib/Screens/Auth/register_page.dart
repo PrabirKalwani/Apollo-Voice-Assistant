@@ -47,7 +47,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       var response = await http.post(
-        Uri.parse('http://localhost:8080/api/register'), // Updated endpoint
+        Uri.parse('http://13.61.37.132:6969/api/register'), // Updated endpoint
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'email': emailController.text,
