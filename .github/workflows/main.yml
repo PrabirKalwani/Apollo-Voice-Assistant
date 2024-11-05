@@ -14,11 +14,11 @@ jobs:
 
       - name: Set up secrets as files
         run: |
-          echo "${{ secrets.CREDENTIALS }}" > credentials.json
-          echo "${{ secrets.FIREBASESERVICE }}" > firebaseservice.json
+          echo "${{ secrets.CREDENTIALS }}" > server/credentials.json
+          echo "${{ secrets.FIREBASESERVICE }}" > server/firebaseservice.json
 
       - name: Build docker image
-        run: docker build -t prabirkalwani/apollo .
+        run: docker build -t prabirkalwani/apollo ./server
 
       - name: Login to Docker Hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_ACCESS_TOKEN }}
@@ -37,4 +37,4 @@ jobs:
         run: sudo docker rm -f apollo
 
       - name: Run Docker container
-        run: sudo docker run -d -p 3000:3000 --name apollo prabirkalwani/apollo:latest
+        run: sudo docker run -d -p 8080:5000 --name apollo prabirkalwani/apollo:latest
