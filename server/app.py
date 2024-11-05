@@ -6,7 +6,6 @@ from modules.email_utils import send_email
 from modules.gemini_utils import extract_email_details, ask_question_to_model
 import logging
 from flask_cors import CORS
-from firebase_admin import credentials, initialize_app, auth
 import datetime
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -18,18 +17,12 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# authenticate firebase api
-cred = credentials.Certificate("./firebaseService.json")
-initialize_app(cred)
-
 logging.basicConfig(level=logging.DEBUG)
-# voice language api
 whisper_model = whisper.load_model("base")
 
 # smtp api
 sender_email = os.getenv("SENDER_EMAIL")
 password = os.getenv("EMAIL_PASSWORD")
-# Calendar API
 CREDENTIALS_FILE = 'credentials.json'
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
@@ -154,51 +147,6 @@ def create_invite():
         return jsonify({'status': 'error', 'message': str(e)}), 400
 
 
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.json
-    email = data.get('email')
-    password = data.get('password')
-
-    try:
-        user = auth.create_user(email=email, password=password)
-        return jsonify({"success": True, "uid": user.uid}), 201
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-    email = data.get('email')
-    password = data.get('password')
-
-    try:
-        user = auth.get_user_by_email(email)
-        custom_token = auth.create_custom_token(user.uid)
-        return jsonify({"success": True, "token": custom_token.decode()}), 200
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
-
-@app.route('/logout', methods=['POST'])
-def logout():
-    return jsonify({"success": True, "message": "Logged out successfully"}), 200
-
-
-@app.route('/reset-password', methods=['POST'])
-def reset_password():
-    data = request.json
-    email = data.get('email')
-
-    try:
-        auth.generate_password_reset_link(
-            email, action_code_settings=None, app=None)
-        return jsonify({"success": True, "message": "Password reset email sent."}), 200
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
-
-
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     if 'file' not in request.files:
@@ -253,6 +201,23 @@ def generate_output():
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
+
+
+@app.route('/generate_output_text', methods=['POST'])
+def text_output():
+    data = request.json
+    question = data.get("question")
+
+    if question != "":
+        result = ask_question_to_model(question)
+        return jsonify({
+            'question': question,
+            'response': result
+        })
+    else:
+        return jsonify({
+            'error': f"An error occurred"
+        })
 
 
 if __name__ == '__main__':

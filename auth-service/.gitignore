@@ -1,0 +1,44 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
+# API Keys and Secrets
+**/config/secrets.yml
+**/credentials.json
+**/service-account.json
+
+# Configuration files that might contain sensitive data
+config.js
+config.json
+settings.json
+
+firebaseService.json
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Build outputs
+/build
+/dist
+/out
+
+# Local SSL certificates
+*.pem
+*.key
+*.crt
