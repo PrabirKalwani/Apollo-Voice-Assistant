@@ -114,7 +114,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   height: 50,
                 ),
                 Image.asset(
-                  'lib/assets/logos/gemini_logo.png',
+                  'lib/assets/logos/.png',
                   width: 75,
                   height: 75,
                 ),

@@ -133,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 const SizedBox(height: 50),
                 Image.asset(
-                  'lib/assets/logos/gemini_logo.png',
+                  'lib/assets/logos/logo.png',
                   width: 75,
                   height: 75,
                 ),

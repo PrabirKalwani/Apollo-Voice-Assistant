@@ -100,7 +100,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Column(
           children: [
             Image.asset(
-              'lib/assets/logos/gemini_logo.png',
+              'lib/assets/logos/logo.png',
               width: 75,
               height: 75,
             ),

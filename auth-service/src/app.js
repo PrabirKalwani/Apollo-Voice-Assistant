@@ -8,7 +8,12 @@ const PORT = 6969;
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(
+  cors({
+    origin: true,
+    allowedHeaders: "X-Requested-With, Content-Type, auth-token",
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 app.use(router);
