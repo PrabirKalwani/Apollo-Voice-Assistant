@@ -8,7 +8,7 @@ class AuthPage extends StatelessWidget {
 
   Future<bool> hasToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = prefs.getString('auth_token'); // Retrieve the access token
     print('Token found: $token'); // Debug log
     return token != null; // Check for existing token
   }

@@ -65,8 +65,10 @@ class _AudioPageState extends State<AudioPage> {
 
   Future<void> _uploadRecording() async {
     if (_filePath == null) return;
-
-    final uri = Uri.parse('http://127.0.0.1:5000/generate_output');
+    // For deployment use this
+    final uri = Uri.parse('http://13.61.37.132:5000/generate_output');
+    // for testing use this
+    // final uri = Uri.parse('http://127.0.0.1:1234/generate_output');
     final request = http.MultipartRequest('POST', uri)
       ..files.add(await http.MultipartFile.fromPath(
         'file',
@@ -127,40 +129,81 @@ class _AudioPageState extends State<AudioPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Audio Chat'),
-        actions: [
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A1A1A), Color(0xFF0D0D0D)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: _buildMessageList(),
+              ),
+              if (_isGenerating) _buildGeneratingIndicator(),
+              _buildAudioControls(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment:
+            MainAxisAlignment.spaceBetween, // Space out the items
+        children: [
+          // Logo on the left
+          Image.asset(
+            'lib/assets/logos/logo.png',
+            height: 50,
+          ),
+          // Greeting text in the middle
+          // Text(
+          //   "Apollo",
+          //   style: TextStyle(
+          //     color: Colors.white,
+          //     fontSize: 18,
+          //     fontWeight: FontWeight.bold,
+          //   ),
+          // ),
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: Icon(Icons.logout, color: Colors.white),
             onPressed: _logout,
           ),
         ],
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildMessageList() {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.all(16),
+      itemBuilder: (_, int index) => _messages[index],
+      itemCount: _messages.length,
+    );
+  }
+
+  Widget _buildGeneratingIndicator() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Row(
         children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: EdgeInsets.all(8.0),
-              itemBuilder: (_, int index) => _messages[index],
-              itemCount: _messages.length,
-            ),
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
           ),
-          if (_isGenerating)
-            Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 8),
-                  Text('Generating response...'),
-                ],
-              ),
-            ),
-          Divider(height: 1.0),
-          Container(
-            decoration: BoxDecoration(color: Theme.of(context).cardColor),
-            child: _buildAudioControls(),
+          SizedBox(width: 16),
+          Text(
+            'Generating response...',
+            style: TextStyle(color: Colors.white70),
           ),
         ],
       ),
@@ -169,19 +212,33 @@ class _AudioPageState extends State<AudioPage> {
 
   Widget _buildAudioControls() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8.0),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       child: Row(
         children: [
           Expanded(
             child: Text(
               _isRecording ? 'Recording...' : 'Tap microphone to start',
-              style: TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16, color: Colors.white70),
             ),
           ),
-          IconButton(
-            icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-            onPressed: _isRecording ? _stopRecording : _startRecording,
-            color: _isRecording ? Colors.red : Theme.of(context).primaryColor,
+          GestureDetector(
+            onTap: _isRecording ? _stopRecording : _startRecording,
+            child: Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _isRecording ? Colors.red : Colors.blue,
+              ),
+              child: Icon(
+                _isRecording ? Icons.stop : Icons.mic,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
           ),
         ],
       ),
@@ -200,43 +257,60 @@ class ChatMessage extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          isUser
-              ? Expanded(child: SizedBox())
-              : Container(
-                  margin: const EdgeInsets.only(right: 16.0),
-                  child: CircleAvatar(child: Text('Bot')),
-                ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-              children: [
-                Text(isUser ? 'You' : 'Bot',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Container(
-                  margin: EdgeInsets.only(top: 5.0),
-                  child: isUser
-                      ? Text(text)
+          if (!isUser) _buildAvatar('Bot'),
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isUser ? Colors.blue : Color(0xFF2C2C2C),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isUser ? 'You' : 'Bot',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  isUser
+                      ? Text(
+                          text,
+                          style: TextStyle(color: Colors.white),
+                        )
                       : MarkdownBody(
                           data: text,
                           styleSheet: MarkdownStyleSheet(
-                            p: TextStyle(fontSize: 16),
+                            p: TextStyle(fontSize: 16, color: Colors.white),
                             strong: TextStyle(fontWeight: FontWeight.bold),
                           ),
                         ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          isUser
-              ? Container(
-                  margin: const EdgeInsets.only(left: 16.0),
-                  child: CircleAvatar(child: Text('You')),
-                )
-              : Expanded(child: SizedBox()),
+          if (isUser) _buildAvatar('You'),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar(String label) {
+    return Container(
+      margin: EdgeInsets.only(right: 16, left: 16),
+      child: CircleAvatar(
+        backgroundColor: Colors.blue,
+        child: Text(
+          label[0],
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }

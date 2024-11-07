@@ -27,14 +27,14 @@ class MyAppRouter {
         name: 'profile',
         path: '/profile',
         pageBuilder: (context, state) {
-          return const MaterialPage(child: Profile());
+          return MaterialPage(child: ProfilePage.new());
         },
       ),
       GoRoute(
         name: 'chat',
         path: '/chat',
         pageBuilder: (context, state) {
-          return const MaterialPage(child: Chat());
+          return MaterialPage(child: ChatPage.new());
         },
       )
     ],

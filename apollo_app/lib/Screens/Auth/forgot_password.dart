@@ -31,7 +31,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     final Uri uri = Uri.parse(
-        'http://127.0.0.1:5000/reset-password'); // Update with your backend URL
+        'http://13.61.37.132:6969/api/reset-password'); // Updated with your backend URL
 
     try {
       final response = await http.post(
@@ -47,7 +47,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       // Check the status code and response
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        if (responseData['success'] == true) {
+        if (responseData['message'] ==
+            "Password reset email sent successfully!") {
           Fluttertoast.showToast(
             msg: responseData['message'], // Display success message
             toastLength: Toast.LENGTH_SHORT,
@@ -99,7 +100,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         child: Column(
           children: [
             Image.asset(
-              'lib/assets/logos/gemini_logo.png',
+              'lib/assets/logos/logo.png',
               width: 75,
               height: 75,
             ),

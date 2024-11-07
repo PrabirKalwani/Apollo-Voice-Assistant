@@ -1,5 +1,6 @@
 import "package:apollo_app/Components/button.dart";
 import "package:apollo_app/Components/textfield.dart";
+import 'package:apollo_app/Screens/Auth/login_page.dart';
 import 'package:apollo_app/Screens/UserLogic/Home.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -46,7 +47,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       var response = await http.post(
-        Uri.parse('http://127.0.0.1:5000/register'),
+        Uri.parse('http://13.61.37.132:6969/api/register'), // Updated endpoint
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           'email': emailController.text,
@@ -59,29 +60,29 @@ class _RegisterPageState extends State<RegisterPage> {
         Navigator.pop(context); // Close the loading dialog
       }
 
-      // Treat 200 and 201 as successful registration
+      // Check if the status code indicates success
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
 
-        // Verify the success field in the response
-        if (jsonResponse['success'] == true) {
-          showToast("Registration successful!", Colors.green);
+        // Check for the specific message in the response
+        if (jsonResponse['message'] ==
+            "Verification email sent! User created successfully!") {
+          showToast("Registration successful! Verification email sent.",
+              Colors.green);
 
           // Delay navigation to allow the lifecycle to complete
           await Future.delayed(Duration(seconds: 1)); // Optional delay
 
           // Check if the widget is still mounted before navigating
           if (mounted) {
-            // Use a post frame callback to navigate after the current frame
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                // Redirect to the HomePage after successful registration
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => HomePage()),
-                  (Route<dynamic> route) => true, // Removes all previous routes
-                );
-              }
-            });
+            // Use the rootNavigator for navigation to the SignInPage
+            Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (context) => LoginPage(
+                        onTap: null,
+                      )), // Navigate to SignInPage
+              (route) => true, // Removes all previous routes
+            );
           }
         } else {
           showToast("Registration failed. Please try again.", Colors.red);
@@ -113,7 +114,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   height: 50,
                 ),
                 Image.asset(
-                  'lib/assets/logos/gemini_logo.png',
+                  'lib/assets/logos/.png',
                   width: 75,
                   height: 75,
                 ),
