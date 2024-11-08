@@ -43,15 +43,18 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final response = await http.post(
         Uri.parse('http://13.61.37.132:5000/generate_output_text'),
-
-        // Uri.parse('http://localhost:1234/generate_output_text'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'question': userMessage}),
       );
 
       if (response.statusCode == 200) {
         final responseJson = jsonDecode(response.body);
-        final result = responseJson['response'] as String;
+
+        // Check if the response contains a 'response' key or a 'message' key
+        final result = responseJson['response'] as String? ??
+            responseJson['message'] as String? ??
+            'Unknown response from server';
+
         setState(() {
           _isGenerating = false;
           _messages.add(ChatMessage(text: result, isUser: false));
@@ -70,8 +73,7 @@ class _ChatPageState extends State<ChatPage> {
       setState(() {
         _isGenerating = false;
         _messages.add(ChatMessage(
-            text: "An error occurred while sending the message.",
-            isUser: false));
+            text: "Error occurred while sending the message.", isUser: false));
       });
     }
   }
