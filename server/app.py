@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import os
 import whisper
 from dotenv import load_dotenv
-from modules.email_utils import send_email
+from modules.email_utils import send_email, get_email_by_name
 from modules.gemini_utils import extract_email_details, ask_question_to_model
 import logging
 from flask_cors import CORS
@@ -11,6 +11,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request  # Ensure this is imported
+import re
 
 load_dotenv()
 
@@ -27,26 +28,26 @@ CREDENTIALS_FILE = 'credentials.json'
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 
-def send_email_response(sender_email, receiver_email, subject, body, question_text, password):
-    if body and subject:
-        email_body = body
-        email_subject = subject
-        result = None
-    else:
-        result = ask_question_to_model(question_text)
-        email_body = f"Transcription: {question_text}\n\nModel Response: {result}"
-        email_subject = "AI Transcription and Response"
+# def send_email_response(sender_email, receiver_email, subject, body, question_text, password):
+#     if body and subject:
+#         email_body = body
+#         email_subject = subject
+#         result = None
+#     else:
+#         result = ask_question_to_model(question_text)
+#         email_body = f"Transcription: {question_text}\n\nModel Response: {result}"
+#         email_subject = "AI Transcription and Response"
 
-    try:
-        send_email(sender_email, receiver_email,
-                   email_subject, email_body, password)
-        return jsonify({
-            'message': 'Email sent successfully!',
-            'question': question_text,
-        }), 200
-    except Exception as e:
-        logging.error(f"Failed to send email: {e}")
-        return jsonify({'error': f"Failed to send email: {e}"}), 500
+#     try:
+#         send_email(sender_email, receiver_email,
+#                    email_subject, email_body, password)
+#         return jsonify({
+#             'message': 'Email sent successfully!',
+#             'question': question_text,
+#         }), 200
+#     except Exception as e:
+#         logging.error(f"Failed to send email: {e}")
+#         return jsonify({'error': f"Failed to send email: {e}"}), 500
 
 
 def transcribe_audio(file_path):
@@ -179,21 +180,28 @@ def generate_output():
         if not language or not question_text:
             return jsonify({'error': 'Failed to transcribe audio'}), 500
 
-        if "send an email" in question_text.lower():
-            receiver_email, subject, body = extract_email_details(
-                question_text)
+        if "send an email to" in question_text.lower():
+            email_details = extract_email_details(question_text)
+            
+            if email_details is None:
+                return jsonify({'error': 'Failed to extract email details'}), 400
 
-            if not sender_email or not receiver_email:
-                return jsonify({'error': 'Invalid sender or receiver email.'}), 400
+            receiver_email, subject, body = email_details
 
-            return send_email_response(sender_email, receiver_email, subject, body, question_text, password)
+            # Ensure receiver_email is valid
+            if not receiver_email:
+                logging.error(f"No close match found for the name in question: {question_text}")
+                return jsonify({'error': f"No close match found for the specified name"}), 400
+
+            try:
+                send_email(sender_email, receiver_email, subject, body, password)
+                return jsonify({'message': 'Email sent successfully!', 'question': question_text}), 200
+            except Exception as e:
+                return jsonify({'error': f"Failed to send email: {e}"}), 500
 
         # Fallback to generating a response from the model
         result = ask_question_to_model(question_text)
-        return jsonify({
-            'question': question_text,
-            'result': result,
-        }), 200
+        return jsonify({'question': question_text, 'result': result}), 200
     except Exception as e:
         logging.error(f"Error in generate_output: {e}")
         return jsonify({'error': f"An error occurred: {e}"}), 500
@@ -202,12 +210,38 @@ def generate_output():
             os.remove(file_path)
 
 
+
 @app.route('/generate_output_text', methods=['POST'])
 def text_output():
     data = request.json
     question = data.get("question")
 
-    if question != "":
+    if question:
+        # Check if the question is an email command
+        if "send an email to" in question.lower():
+            # Extract email details
+            email_details = extract_email_details(question)
+            if email_details is None:
+                return jsonify({'error': 'Failed to extract email details'}), 400
+
+            receiver_email, subject, body = email_details
+
+            # Ensure receiver_email is valid
+            if not receiver_email:
+                logging.error(f"No close match found for the name in question: {question}")
+                return jsonify({'error': f"No close match found for the specified name"}), 400
+
+            # Attempt to send the email
+            try:
+                send_email(sender_email, receiver_email, subject, body, password)
+                return jsonify({
+                    'message': 'Email sent successfully!',
+                    'question': question
+                }), 200
+            except Exception as e:
+                return jsonify({'error': f"Failed to send email: {e}"}), 500
+
+        # If no email intent, fallback to generating a response from the model
         result = ask_question_to_model(question)
         return jsonify({
             'question': question,
@@ -215,8 +249,9 @@ def text_output():
         })
     else:
         return jsonify({
-            'error': f"An error occurred"
-        })
+            'error': "No question provided"
+        }), 400
+
 
 
 if __name__ == '__main__':
