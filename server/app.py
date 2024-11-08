@@ -34,8 +34,7 @@ def send_email_response(sender_email, receiver_email, subject, body, question_te
         result = None
     else:
         result = ask_question_to_model(question_text)
-        email_body = f"Transcription: {
-            question_text}\n\nModel Response: {result}"
+        email_body = f"Transcription: {question_text}\n\nModel Response: {result}"
         email_subject = "AI Transcription and Response"
 
     try:

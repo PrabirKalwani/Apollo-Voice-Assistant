@@ -219,7 +219,7 @@ class ChatMessage extends StatelessWidget {
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isUser) _buildAvatar('Bot'),
+          if (!isUser) _buildAvatar('Apollo'),
           Flexible(
             child: Container(
               padding: EdgeInsets.all(12),
@@ -231,7 +231,7 @@ class ChatMessage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isUser ? 'You' : 'Bot',
+                    isUser ? 'You' : 'Apollo',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
